@@ -1,11 +1,14 @@
 from sqlalchemy.orm import Session
+from models import Base
 
 import crud
 import schemas
 
 from fastapi import FastAPI, Depends, HTTPException
 
-from database import SessionLocal
+from database import SessionLocal, engine
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
@@ -24,10 +27,10 @@ def root():
 @app.get("/authors/", response_model=list[schemas.Author])
 def read_authors(
         db: Session = Depends(get_db),
-        skip: int = 5,
+        skip: int = 0,
         limit: int = 100,
 ):
-    return crud.get_all_authors(db)
+    return crud.get_all_authors(db, skip=skip, limit=limit)
 
 @app.get("/authors/{author_id}/", response_model=schemas.Author)
 def read_single_author(author_id: int, db: Session = Depends(get_db)):
@@ -48,14 +51,16 @@ def create_author(
 
 @app.get("/books/", response_model=list[schemas.Book])
 def read_books(
-        author_id: int,
+        author_id: int | None = None,
         db: Session = Depends(get_db),
-        skip: int = 5,
+        skip: int = 0,
         limit: int = 100,
 ):
     return crud.get_book_list(
         db=db,
-        author_id=author_id
+        author_id=author_id,
+        skip=skip,
+        limit=limit,
     )
 
 @app.get("/books/{book_id}/", response_model=schemas.Book)
@@ -76,4 +81,8 @@ def create_book(
     db_book = crud.get_book_by_title(db=db, title=book.title)
     if db_book:
         raise HTTPException(status_code=400, detail="Book already exists")
+
+    db_author = crud.get_author(db=db, author_id=book.author_id)
+    if not db_author:
+        raise HTTPException(status_code=404, detail="Author not found")
     return crud.create_book(db=db, book=book)

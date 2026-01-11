@@ -47,7 +47,7 @@ def get_book(db: Session, book_id: int):
 def get_book_by_title(db: Session, title: str):
     return (
         db.scalars(select(models.DBBook).where(models.DBBook.title == title))
-                   )
+                   ).first()
 
 def create_book(db: Session, book: BookCreate):
     db_book = models.DBBook(
